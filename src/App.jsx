@@ -16,12 +16,24 @@ function App() {
   const checkProxyIP = async () => {
     setIpData({ loading: true, ip: null, error: null });
     try {
-      // /check-ip is routed through our proxy in vite.config.js
+      // /check-ip is routed through our proxy in vite.config.js to the backend on port 3001
       const res = await fetch('/check-ip');
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `HTTP ${res.status}`);
+      }
+      
       const data = await res.json();
-      setIpData({ loading: false, ip: data.ip, error: null });
+      if (data.ip) {
+        setIpData({ loading: false, ip: data.ip, error: null });
+      } else if (data.error) {
+        setIpData({ loading: false, ip: null, error: data.error });
+      } else {
+        setIpData({ loading: false, ip: null, error: 'Unexpected response format' });
+      }
     } catch (err) {
-      setIpData({ loading: false, ip: null, error: err.message });
+      setIpData({ loading: false, ip: null, error: err.message || 'Failed to fetch - Make sure backend is running on port 3001' });
     }
   };
 
@@ -155,7 +167,11 @@ function App() {
         </p>
         
         {ipData.loading && <span className="status-badge status-pending">Checking...</span>}
-        {ipData.error && <span className="status-badge" style={{ color: '#ff6b6b' }}>Error: {ipData.error}</span>}
+        {ipData.error && (
+          <div style={{ background: 'rgba(255, 107, 107, 0.1)', border: '1px solid #ff6b6b', borderRadius: '8px', padding: '1rem', color: '#ff6b6b', fontSize: '0.95rem' }}>
+            <strong>❌ Error:</strong> {ipData.error}
+          </div>
+        )}
         {ipData.ip && (
           <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', fontSize: '1.2rem', fontFamily: 'monospace', color: '#2ed573' }}>
             {ipData.ip}

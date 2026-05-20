@@ -47,16 +47,14 @@ export default defineConfig({
       },
       // New route specifically to check public IP via proxy
       '/check-ip': {
-        target: 'https://api.ipify.org',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-        agent: agent,
-        rewrite: (path) => path.replace(/^\/check-ip/, '/?format=json'),
         configure: (proxy) => {
           proxy.on('error', (err, req, res) => {
             console.error('IP Proxy Error:', err);
             res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Proxy connection failed. Check your proxy server.', details: err.message }));
+            res.end(JSON.stringify({ error: 'Proxy connection failed. Make sure backend server is running on port 3001.', details: err.message }));
           });
         }
       }

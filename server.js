@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 
-// Configure the external HTTP proxy agent from environment variables
+
 const PROXY_USER = process.env.PROXY_USER;
 const PROXY_PASS = process.env.PROXY_PASS;
 const PROXY_HOST = process.env.PROXY_HOST;
@@ -59,12 +59,25 @@ app.get('/check-ip', (req, res, next) => {
     changeOrigin: true,
     agent: proxyAgent,
     pathRewrite: () => '/?format=json',
-    onProxyReq: () => {
+    onProxyReq: (proxyReq, req) => {
       console.log('[IP Check] Fetching public IP address via proxy');
+      console.log(`[Proxy] Using: ${PROXY_HOST}:${PROXY_PORT} with user: ${PROXY_USER}`);
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      console.log(`[IP Check Response] Status: ${proxyRes.statusCode}`);
+      if (proxyRes.statusCode !== 200) {
+        console.warn(`[IP Check] Proxy returned status ${proxyRes.statusCode} - may be auth or connectivity issue`);
+      }
     },
     onError: (err, req, res) => {
       console.error(`[IP Check Error] ${err.message}`);
-      res.status(500).json({ error: 'Failed to check IP address', details: err.message });
+      console.error(`[IP Check Error Details] ${err.code} - ${err.errno}`);
+      res.status(500).json({ 
+        error: 'Failed to check IP address through proxy',
+        details: err.message,
+        code: err.code,
+        hint: 'Verify proxy credentials in .env file (PROXY_USER, PROXY_PASS, PROXY_HOST, PROXY_PORT)'
+      });
     }
   })(req, res, next);
 });
