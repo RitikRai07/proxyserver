@@ -11,17 +11,23 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 
-// Configure the external HTTP proxy agent
-const PROXY_USER = process.env.PROXY_USER || 'bishek';
-const PROXY_PASS = process.env.PROXY_PASS || 'password';
-const PROXY_HOST = process.env.PROXY_HOST || '72.60.220.128';
-const PROXY_PORT = process.env.PROXY_PORT || '8080';
+// Configure the external HTTP proxy agent from environment variables
+const PROXY_USER = process.env.PROXY_USER;
+const PROXY_PASS = process.env.PROXY_PASS;
+const PROXY_HOST = process.env.PROXY_HOST;
+const PROXY_PORT = process.env.PROXY_PORT;
+
+// Validate proxy configuration
+if (!PROXY_USER || !PROXY_PASS || !PROXY_HOST || !PROXY_PORT) {
+  console.error('❌ ERROR: Proxy credentials are incomplete. Please check your .env file.');
+  console.error('   Required: PROXY_USER, PROXY_PASS, PROXY_HOST, PROXY_PORT');
+  process.exit(1);
+}
 
 const proxyUrl = `http://${PROXY_USER}:${PROXY_PASS}@${PROXY_HOST}:${PROXY_PORT}`;
 const proxyAgent = new HttpsProxyAgent(proxyUrl);
 
-// Proxy middleware to intercept and forward requests
-// Frontend usage: fetch('http://localhost:3001/proxy?url=https://api.example.com/data')
+// Generic proxy middleware - Frontend usage: fetch('http://localhost:3001/proxy?url=https://api.example.com/data')
 app.use('/proxy', (req, res, next) => {
   const targetUrl = req.query.url;
   
@@ -37,12 +43,28 @@ app.use('/proxy', (req, res, next) => {
     agent: proxyAgent,
     pathRewrite: () => targetUrlObj.pathname + targetUrlObj.search,
     onProxyReq: () => {
-      // Optional: log or modify headers
       console.log(`[Proxy] Forwarding request to: ${targetUrl}`);
     },
     onError: (err, req, res) => {
       console.error(`[Proxy Error] ${err.message}`);
       res.status(500).json({ error: 'Proxy forwarding failed', details: err.message });
+    }
+  })(req, res, next);
+});
+
+// Specific endpoint for IP address checking through proxy
+app.get('/check-ip', (req, res, next) => {
+  createProxyMiddleware({
+    target: 'https://api.ipify.org',
+    changeOrigin: true,
+    agent: proxyAgent,
+    pathRewrite: () => '/?format=json',
+    onProxyReq: () => {
+      console.log('[IP Check] Fetching public IP address via proxy');
+    },
+    onError: (err, req, res) => {
+      console.error(`[IP Check Error] ${err.message}`);
+      res.status(500).json({ error: 'Failed to check IP address', details: err.message });
     }
   })(req, res, next);
 });

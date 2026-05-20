@@ -9,8 +9,9 @@ function App() {
   const turnstileRef = useRef(null);
   const [ipData, setIpData] = useState({ loading: false, ip: null, error: null });
 
-  // Cloudflare Turnstile Client Key
-  const SITE_KEY = '0x4AAAAAADRE2JQBHXXLaRy0';
+  // Cloudflare Turnstile Client Key from environment
+  const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || 'test_mode';
+  const [turnstileError, setTurnstileError] = useState(null);
 
   const checkProxyIP = async () => {
     setIpData({ loading: true, ip: null, error: null });
@@ -74,23 +75,56 @@ function App() {
 
         {showTurnstile && status !== 'success' && (
           <div className="turnstile-wrapper">
-            <Turnstile
-              ref={turnstileRef}
-              siteKey={SITE_KEY}
-              onSuccess={(t) => {
-                setToken(t);
-                // Auto-verify if user solves it
-                setStatus('success');
-              }}
-              onError={() => setStatus('error')}
-              onExpire={() => {
-                setToken(null);
-                setStatus('idle');
-              }}
-              options={{
-                theme: 'dark',
-              }}
-            />
+            {SITE_KEY === 'test_mode' ? (
+              <div style={{ 
+                padding: '1.5rem', 
+                background: 'rgba(255,165,0,0.1)', 
+                border: '1px solid orange', 
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#ffa500', margin: '0 0 1rem 0' }}>
+                  ⚠️ Turnstile not configured. Add VITE_TURNSTILE_SITE_KEY to .env
+                </p>
+                <button 
+                  className="action-btn"
+                  onClick={() => {
+                    setToken('test_token_' + Date.now());
+                    setStatus('success');
+                  }}
+                  style={{ padding: '0.8rem 1.5rem' }}
+                >
+                  Test Mode: Skip Verification
+                </button>
+              </div>
+            ) : (
+              <Turnstile
+                ref={turnstileRef}
+                siteKey={SITE_KEY}
+                onSuccess={(t) => {
+                  setToken(t);
+                  setTurnstileError(null);
+                  setStatus('success');
+                }}
+                onError={(err) => {
+                  console.error('Turnstile Error:', err);
+                  setTurnstileError('Verification failed. Check your proxy/firewall.');
+                  setStatus('error');
+                }}
+                onExpire={() => {
+                  setToken(null);
+                  setStatus('idle');
+                }}
+                options={{
+                  theme: 'dark',
+                }}
+              />
+            )}
+            {turnstileError && (
+              <p style={{ color: '#ff6b6b', marginTop: '1rem', fontSize: '0.9rem' }}>
+                ❌ {turnstileError}
+              </p>
+            )}
           </div>
         )}
 

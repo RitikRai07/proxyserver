@@ -5,11 +5,17 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-// Default proxy credentials based on provided requirements
-const PROXY_USER = process.env.PROXY_USER || 'bishek';
-const PROXY_PASS = process.env.PROXY_PASS || 'password';
-const PROXY_HOST = process.env.PROXY_HOST || '72.60.220.128';
-const PROXY_PORT = process.env.PROXY_PORT || '8080';
+// Proxy credentials from environment variables (required - no defaults)
+const PROXY_USER = process.env.PROXY_USER;
+const PROXY_PASS = process.env.PROXY_PASS;
+const PROXY_HOST = process.env.PROXY_HOST;
+const PROXY_PORT = process.env.PROXY_PORT;
+
+// Validate proxy configuration
+if (!PROXY_USER || !PROXY_PASS || !PROXY_HOST || !PROXY_PORT) {
+  console.warn('⚠️  WARNING: Proxy environment variables not fully configured.');
+  console.warn('   Set PROXY_USER, PROXY_PASS, PROXY_HOST, PROXY_PORT in .env file');
+}
 
 const proxyUrl = `http://${PROXY_USER}:${PROXY_PASS}@${PROXY_HOST}:${PROXY_PORT}`;
 const agent = new HttpsProxyAgent(proxyUrl);
