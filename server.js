@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 
-
 const PROXY_USER = process.env.PROXY_USER;
 const PROXY_PASS = process.env.PROXY_PASS;
 const PROXY_HOST = process.env.PROXY_HOST;
@@ -35,21 +34,25 @@ app.use('/proxy', (req, res, next) => {
     return res.status(400).json({ error: 'Missing or invalid target URL in "url" query parameter' });
   }
 
-  const targetUrlObj = new URL(targetUrl);
-  
-  createProxyMiddleware({
-    target: targetUrlObj.origin,
-    changeOrigin: true,
-    agent: proxyAgent,
-    pathRewrite: () => targetUrlObj.pathname + targetUrlObj.search,
-    onProxyReq: () => {
-      console.log(`[Proxy] Forwarding request to: ${targetUrl}`);
-    },
-    onError: (err, req, res) => {
-      console.error(`[Proxy Error] ${err.message}`);
-      res.status(500).json({ error: 'Proxy forwarding failed', details: err.message });
-    }
-  })(req, res, next);
+  try {
+    const targetUrlObj = new URL(targetUrl);
+    
+    createProxyMiddleware({
+      target: targetUrlObj.origin,
+      changeOrigin: true,
+      agent: proxyAgent,
+      pathRewrite: () => targetUrlObj.pathname + targetUrlObj.search,
+      onProxyReq: () => {
+        console.log(`[Proxy] Forwarding request to: ${targetUrl}`);
+      },
+      onError: (err, req, res) => {
+        console.error(`[Proxy Error] ${err.message}`);
+        res.status(500).json({ error: 'Proxy forwarding failed', details: err.message });
+      }
+    })(req, res, next);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid URL format', details: err.message });
+  }
 });
 
 // Specific endpoint for IP address checking through proxy
@@ -59,11 +62,11 @@ app.get('/check-ip', (req, res, next) => {
     changeOrigin: true,
     agent: proxyAgent,
     pathRewrite: () => '/?format=json',
-    onProxyReq: (proxyReq, req) => {
+    onProxyReq: () => {
       console.log('[IP Check] Fetching public IP address via proxy');
       console.log(`[Proxy] Using: ${PROXY_HOST}:${PROXY_PORT} with user: ${PROXY_USER}`);
     },
-    onProxyRes: (proxyRes, req, res) => {
+    onProxyRes: (proxyRes) => {
       console.log(`[IP Check Response] Status: ${proxyRes.statusCode}`);
       if (proxyRes.statusCode !== 200) {
         console.warn(`[IP Check] Proxy returned status ${proxyRes.statusCode} - may be auth or connectivity issue`);
@@ -82,7 +85,16 @@ app.get('/check-ip', (req, res, next) => {
   })(req, res, next);
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Proxy server is running' });
+});
+
 app.listen(PORT, () => {
-  console.log(`Proxy server running on port ${PORT}`);
-  console.log(`Outbound traffic routed via: ${PROXY_HOST}:${PROXY_PORT}`);
+  console.log(`✅ Proxy server running on port ${PORT}`);
+  console.log(`🔄 Outbound traffic routed via: ${PROXY_HOST}:${PROXY_PORT}`);
+  console.log(`📡 Endpoints available:`);
+  console.log(`   - GET /check-ip (check public IP via proxy)`);
+  console.log(`   - GET /proxy?url=<target_url> (generic proxy endpoint)`);
+  console.log(`   - GET /health (health check)`);
 });

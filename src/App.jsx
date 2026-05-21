@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
-import './index.css'; // Make sure the styles are applied
+import './App.css';
 
 function App() {
   const [token, setToken] = useState(null);
@@ -52,6 +52,7 @@ function App() {
     setToken(null);
     setStatus('idle');
     setShowTurnstile(false);
+    setTurnstileError(null);
     if (turnstileRef.current) {
       turnstileRef.current.reset();
     }

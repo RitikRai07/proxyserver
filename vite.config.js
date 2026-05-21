@@ -51,10 +51,8 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         configure: (proxy) => {
-          proxy.on('error', (err, req, res) => {
+          proxy.on('error', (err) => {
             console.error('IP Proxy Error:', err);
-            res.writeHead(500, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Proxy connection failed. Make sure backend server is running on port 3001.', details: err.message }));
           });
         }
       }
